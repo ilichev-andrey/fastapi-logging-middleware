@@ -9,30 +9,15 @@ from starlette.responses import Response
 from starlette.testclient import TestClient
 
 from fastapi_logging_middleware import http_exporter
+from tests.components import Logger, ResponseGetter, JSON_MEDIA_TYPE
 
 if TYPE_CHECKING:
     from httpx._types import RequestContent, QueryParamTypes, HeaderTypes
 
 
 # ---- Test components ----
-class _Logger:
-    """A test-only class that simulates logging."""
-
-    def log(self, *args, **kwargs) -> None:
-        """Function simulating logging (mock object will be created)."""
-
-
-_logger = _Logger()
-
-
-class _ResponseGetter:
-    """A test-only class that will produce a test-defined response."""
-
-    def get(self) -> Response:
-        """Give a specific response."""
-
-
-_response_getter = _ResponseGetter()
+_logger = Logger()
+_response_getter = ResponseGetter()
 
 
 # ---- Application components ----
@@ -84,7 +69,7 @@ class TestRequestResponseExporting:
                 'content': _REQUEST_BODY,
                 'params': [('param_list', 'list_item1'), ('param_list', 'list_item2')],
                 'headers': {'request-header1': 'request_header_value1', 'request-header2': 'request_header_value2'},
-                'response_obj': Response(content=_RESPONSE_BODY, media_type='application/json'),
+                'response_obj': Response(content=_RESPONSE_BODY, media_type=JSON_MEDIA_TYPE),
                 'expected_request': {
                     'query_params': 'param_list=list_item1&param_list=list_item2',
                     'headers': {
@@ -100,7 +85,7 @@ class TestRequestResponseExporting:
                 },
                 'expected_response': {
                     'headers': {
-                        'content-type': 'application/json',
+                        'content-type': JSON_MEDIA_TYPE,
                         'content-length': str(_RESPONSE_BODY_LEN),
                     },
                 },

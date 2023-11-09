@@ -6,6 +6,8 @@ from starlette.datastructures import Address, Headers, URL, QueryParams, Mutable
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, PlainTextResponse, JSONResponse, Response, StreamingResponse
 
+from fastapi_logging_middleware.utils import orjson_dumps
+
 MaskedNamesType = AbstractSet[str]
 DEFAULT_MASKED_NAMES: MaskedNamesType = frozenset(('authorization', 'token'))
 
@@ -57,6 +59,19 @@ class BaseInfo:
                 if isinstance(value, dumper_type):
                     data[key] = func(value)
         return data
+
+    def as_json(
+            self,
+            is_mask_private_data: bool = True,
+            masked_names: MaskedNamesType = DEFAULT_MASKED_NAMES,
+            exclude_none: bool = True
+    ) -> str:
+        """Convert this object to a JSON string."""
+        return orjson_dumps(self.as_dict(
+            is_mask_private_data=is_mask_private_data,
+            masked_names=masked_names,
+            exclude_none=exclude_none
+        ))
 
     @classmethod
     def _mask_private_data(cls, data: Any, masked_names: MaskedNamesType) -> Any:
