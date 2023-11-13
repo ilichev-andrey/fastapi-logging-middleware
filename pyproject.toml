@@ -17,11 +17,11 @@ include = ["LICENSE", "README.md"]
 [tool.poetry.dependencies]
 python = "^3.8.1"
 orjson = "^3.9.10"
-fastapi = "*"
-uvicorn = "*"
 
 [tool.poetry.group.dev.dependencies]
-python-multipart = "^0.0.6"
+fastapi = "*"
+uvicorn = "*"
+python-multipart = "*"
 
 [tool.poetry.group.linting]
 optional = true
