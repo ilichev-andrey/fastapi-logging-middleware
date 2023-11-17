@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field, asdict
-from typing import Literal, Optional, Dict, Type, Callable, Any, AbstractSet, Hashable
+from typing import Literal, Optional, Dict, Type, Callable, Any, AbstractSet, Hashable, List, Tuple, AnyStr
 
 from starlette.concurrency import iterate_in_threadpool
-from starlette.datastructures import Address, Headers, URL, QueryParams, MutableHeaders
+from starlette.datastructures import Address, Headers, URL, QueryParams, MutableHeaders, FormData, UploadFile
 from starlette.requests import Request
 from starlette.responses import HTMLResponse, PlainTextResponse, JSONResponse, Response, StreamingResponse
 
@@ -27,6 +27,21 @@ def convert_address_to_dict(address: Address) -> Dict[str, Any]:
     return address._asdict()  # noqa: WPS437
 
 
+def convert_form_data_to_dict(form: FormData) -> List[Tuple[str, Any]]:
+    """."""
+    data = []
+    for key, value in form.multi_items():
+        normalized = value
+        if isinstance(value, UploadFile):
+            normalized = {
+                'file_name': value.filename,
+                'size': value.size,
+                'headers': value.headers,
+            }
+        data.append((key, normalized))
+    return data
+
+
 @dataclass
 class BaseInfo:
     """Base class for storing information about HTTP objects."""
@@ -40,6 +55,7 @@ class BaseInfo:
             QueryParams: convert_to_str,
             Headers: convert_headers_to_dict,
             Address: convert_address_to_dict,
+            FormData: convert_form_data_to_dict,
         }
 
     def as_dict(
@@ -111,21 +127,32 @@ class RequestInfo(BaseInfo):
     headers: Headers
     client_address: Optional[Address] = None
     body: Optional[str] = None
+    form: Optional[FormData] = None
 
     @classmethod
-    async def from_starlette_request(cls, request: Request, include_body: bool) -> 'RequestInfo':
+    async def from_starlette_request(cls, request: Request, include_body: bool, include_form: bool) -> 'RequestInfo':
         """Convert a request object (starlette) to a serializable object (dataclass)."""
         body = None
         if include_body:
-            body = await request.body()
-            body = str(body)
+            try:
+                body = await request.body()
+            except Exception:
+                pass
+
+        form = None
+        if include_form:
+            try:
+                form = await request.form()
+            except Exception:
+                pass
         return RequestInfo(
             method=request.method,
             path=request.url.path,
             query_params=request.query_params,
             headers=request.headers,
             client_address=request.client,
-            body=body
+            body=_normalize_body(body),
+            form=_normalize_form(form)
         )
 
     def mask_private_data(self, masked_names: MaskedNamesType = DEFAULT_MASKED_NAMES) -> 'RequestInfo':
@@ -205,5 +232,17 @@ async def _get_response_body(response: Response) -> Optional[str]:
         response_body = response.body
 
     if response_body is not None:
-        return str(response_body)
+        return _normalize_body(response_body)
     return None
+
+
+def _normalize_body(data: Optional[AnyStr]) -> Optional[str]:
+    if not data:
+        return None
+    return str(data)
+
+
+def _normalize_form(data: Optional[FormData]) -> Optional[FormData]:
+    if not data:
+        return None
+    return data

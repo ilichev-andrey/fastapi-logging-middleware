@@ -12,16 +12,19 @@ class BaseHandler:
     """."""
 
     _include_body: bool
+    _include_form: bool
 
-    def __init__(self, include_body: bool = False) -> None:
+    def __init__(self, include_body: bool = False, include_form: bool = False) -> None:
         """
         .
 
         Args:
             include_body:
+            include_form:
         """
 
         self._include_body = include_body
+        self._include_form = include_form
 
     @abstractmethod
     async def save_request_to_storage(self, request: Request) -> None:
@@ -37,16 +40,27 @@ LoggingFuncFactory = Callable[[], LoggingFuncType]
 
 
 class LoggingHandler(BaseHandler):
+    """."""
 
     _logging_func_factory: LoggingFuncFactory
 
     def __init__(
             self,
             include_body: bool = False,
+            include_form: bool = False,
             logging_func: Optional[LoggingFuncType] = None,
             logging_func_factory: Optional[LoggingFuncFactory] = None
     ):
-        super().__init__(include_body=include_body)
+        """
+        .
+
+        Args:
+            include_body:
+            include_form:
+            logging_func:
+            logging_func_factory:
+        """
+        super().__init__(include_body=include_body, include_form=include_form)
 
         if logging_func_factory is None:
             logger = get_logger()
@@ -58,7 +72,11 @@ class LoggingHandler(BaseHandler):
 
     async def save_request_to_storage(self, request: Request) -> None:
         """."""
-        request_info = await RequestInfo.from_starlette_request(request=request, include_body=self._include_body)
+        request_info = await RequestInfo.from_starlette_request(
+            request=request,
+            include_body=self._include_body,
+            include_form=self._include_form
+        )
         self._logging_func_factory()(request_info.as_json())
 
     async def save_response_to_storage(self, request: Request, response: Response) -> None:
