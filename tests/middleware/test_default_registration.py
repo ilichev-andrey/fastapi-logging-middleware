@@ -193,7 +193,7 @@ class TestDefaultRegistration:
         ]
     )
     @pytest.mark.parametrize(argnames='http_client', argvalues=[app], indirect=['http_client'])
-    def test(
+    def test_api_route(
             self,
             http_client: TestClient,
             logger_mock: Mock,
@@ -224,6 +224,164 @@ class TestDefaultRegistration:
         assert request == expected_full_request
         # check the order of parameters
         assert tuple(request.keys()) == ('type', 'method', 'path', 'query_params', 'headers', 'client_address')
+
+        expected_full_response = {
+            'type': 'Response',
+            'status_code': response_obj.status_code,
+            'request': {
+                'method': method,
+                'path': url_path,
+            },
+        }
+        expected_full_response.update(expected_response)
+        assert response == expected_full_response
+        # check the order of parameters
+        assert tuple(response.keys()) == ('type', 'status_code', 'headers', 'request')
+
+    @pytest.mark.parametrize(
+        ('method', 'url_path', 'content', 'params', 'headers', 'response_obj', 'expected_response'),
+        [
+            # Swagger GET
+            {
+                'method': 'GET',
+                'url_path': '/docs',
+                'content': None,
+                'params': _REQUEST_PARAMS,
+                'headers': _REQUEST_HEADERS,
+                'response_obj': Response(status_code=status.HTTP_200_OK),
+                'expected_response': {
+                    'headers': {
+                        'content-length': '939',
+                        'content-type': 'text/html; charset=utf-8'
+                    },
+                },
+            }.values(),
+            # Swagger HEAD
+            {
+                'method': 'HEAD',
+                'url_path': '/docs',
+                'content': None,
+                'params': _REQUEST_PARAMS,
+                'headers': _REQUEST_HEADERS,
+                'response_obj': Response(status_code=status.HTTP_200_OK),
+                'expected_response': {
+                    'headers': {
+                        'content-length': '939',
+                        'content-type': 'text/html; charset=utf-8'
+                    },
+                },
+            }.values(),
+            # Redoc GET
+            {
+                'method': 'GET',
+                'url_path': '/redoc',
+                'content': None,
+                'params': _REQUEST_PARAMS,
+                'headers': _REQUEST_HEADERS,
+                'response_obj': Response(status_code=status.HTTP_200_OK),
+                'expected_response': {
+                    'headers': {
+                        'content-length': '891',
+                        'content-type': 'text/html; charset=utf-8'
+                    },
+                },
+            }.values(),
+            # Redoc HEAD
+            {
+                'method': 'HEAD',
+                'url_path': '/redoc',
+                'content': None,
+                'params': _REQUEST_PARAMS,
+                'headers': _REQUEST_HEADERS,
+                'response_obj': Response(status_code=status.HTTP_200_OK),
+                'expected_response': {
+                    'headers': {
+                        'content-length': '891',
+                        'content-type': 'text/html; charset=utf-8'
+                    },
+                },
+            }.values(),
+            # Openapi GET
+            {
+                'method': 'GET',
+                'url_path': '/openapi.json',
+                'content': None,
+                'params': _REQUEST_PARAMS,
+                'headers': _REQUEST_HEADERS,
+                'response_obj': Response(status_code=status.HTTP_200_OK),
+                'expected_response': {
+                    'headers': {
+                        'content-length': '932',
+                        'content-type': 'application/json'
+                    },
+                },
+            }.values(),
+            # Openapi HEAD
+            {
+                'method': 'HEAD',
+                'url_path': '/openapi.json',
+                'content': None,
+                'params': _REQUEST_PARAMS,
+                'headers': _REQUEST_HEADERS,
+                'response_obj': Response(status_code=status.HTTP_200_OK),
+                'expected_response': {
+                    'headers': {
+                        'content-length': '932',
+                        'content-type': 'application/json'
+                    },
+                },
+            }.values(),
+            # oauth2-redirect GET
+            {
+                'method': 'GET',
+                'url_path': '/docs/oauth2-redirect',
+                'content': None,
+                'params': _REQUEST_PARAMS,
+                'headers': _REQUEST_HEADERS,
+                'response_obj': Response(status_code=status.HTTP_200_OK),
+                'expected_response': {
+                    'headers': {
+                        'content-length': '3012',
+                        'content-type': 'text/html; charset=utf-8'
+                    },
+                },
+            }.values(),
+            # oauth2-redirect HEAD
+            {
+                'method': 'HEAD',
+                'url_path': '/docs/oauth2-redirect',
+                'content': None,
+                'params': _REQUEST_PARAMS,
+                'headers': _REQUEST_HEADERS,
+                'response_obj': Response(status_code=status.HTTP_200_OK),
+                'expected_response': {
+                    'headers': {
+                        'content-length': '3012',
+                        'content-type': 'text/html; charset=utf-8'
+                    },
+                },
+            }.values(),
+        ]
+    )
+    @pytest.mark.parametrize(argnames='http_client', argvalues=[app], indirect=['http_client'])
+    def test_base_route(
+            self,
+            http_client: TestClient,
+            logger_mock: Mock,
+            method: str,
+            url_path: str,
+            content: 'RequestContent',
+            params: 'QueryParamTypes',
+            headers: 'HeaderTypes',
+            response_obj: Response,
+            expected_response: Dict,
+    ):
+        """."""
+        with patch.object(target=response_getter, attribute='get', new=Mock(return_value=response_obj)):
+            http_client.request(method=method, url=url_path, content=content, params=params, headers=headers)
+
+        assert logger_mock.call_count == 1  # 1 - because only the response is saved
+        response = orjson.loads(logger_mock.call_args_list[0].args[0])
 
         expected_full_response = {
             'type': 'Response',
